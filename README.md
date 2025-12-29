@@ -1,6 +1,6 @@
 # PHP_Laravel12_TinyMCE_Text_Editor_Using_Vue.JS
 
-#Step 1 : install laravel 12 and Create Project 
+# Step 1 : install laravel 12 and Create Project 
 ```php
 composer create-project laravel/laravel PHP_Laravel12_TinyMCE_Text_Editor_Using_Vue.JS
 ``` 
