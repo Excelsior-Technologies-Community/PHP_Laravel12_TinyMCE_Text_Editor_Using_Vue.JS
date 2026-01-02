@@ -1,8 +1,8 @@
-<template>
-    <div class="card shadow-sm">
-        <div class="card-header">
+ <template>
+     <div class="card shadow-sm">
+         <div class="card-header">
             <h4 class="mb-0">Create Title</h4>
-        </div>
+         </div>
 
         <div class="card-body">
             <form method="POST" action="/store">

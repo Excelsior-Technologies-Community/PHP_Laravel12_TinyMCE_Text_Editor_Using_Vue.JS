@@ -18,20 +18,20 @@ class TitleController extends Controller
 }
 
 
-    public function create()
+public function create()
     {
         return view('app', [
             'page' => 'create'
         ]);
     }
 
-    public function store(Request $request)
+public function store(Request $request)
     {
         Title::create($request->only('title', 'description'));
         return redirect('/');
     }
 
-    public function editPage($id)
+public function editPage($id)
     {
         $title = Title::findOrFail($id);
         return view('app', [
@@ -40,7 +40,7 @@ class TitleController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+public function update(Request $request, $id)
     {
         $title = Title::findOrFail($id);
         $title->update($request->only('title', 'description'));

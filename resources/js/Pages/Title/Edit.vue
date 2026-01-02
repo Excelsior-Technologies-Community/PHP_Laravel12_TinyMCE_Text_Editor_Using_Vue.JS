@@ -1,4 +1,4 @@
-<template>
+ <template>
     <div class="card shadow-sm">
         <div class="card-header">
             <h4 class="mb-0">Edit Title</h4>

@@ -6,14 +6,14 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void
-    {
+     {
         Schema::create('title', function (Blueprint $table) {
             $table->id();
             $table->string('title');
             $table->longText('description')->nullable();
             $table->timestamps();
         });
-    }
+     }
 
     public function down(): void
     {

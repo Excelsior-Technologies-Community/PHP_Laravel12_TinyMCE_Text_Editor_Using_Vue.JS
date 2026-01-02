@@ -1,5 +1,4 @@
 import { createApp } from 'vue'
-
 import Index from './Pages/Title/Index.vue'
 import Create from './Pages/Title/Create.vue'
 import Edit from './Pages/Title/Edit.vue'
