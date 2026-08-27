@@ -3,42 +3,194 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TitleController;
 
+
 /*
 |--------------------------------------------------------------------------
 | Title Routes
 |--------------------------------------------------------------------------
 */
 
-// List titles
-Route::get('/', [TitleController::class, 'index']);
 
-// Create
-Route::get('/create', [TitleController::class, 'create']);
-Route::post('/store', [TitleController::class, 'store']);
+/*
+|--------------------------------------------------------------------------
+| List Titles
+|--------------------------------------------------------------------------
+*/
 
-// Edit
-Route::get('/edit/{id}', [TitleController::class, 'editPage']);
+Route::get(
+    '/',
+    [TitleController::class, 'index']
+);
 
-// Update
-Route::post('/update/{id}', [TitleController::class, 'update']);
 
-// Delete
-Route::get('/delete/{id}', [TitleController::class, 'destroy']);
+/*
+|--------------------------------------------------------------------------
+| Create
+|--------------------------------------------------------------------------
+*/
 
-// Bulk delete
-Route::post('/bulk-delete', [TitleController::class, 'bulkDestroy']);
+Route::get(
+    '/create',
+    [TitleController::class, 'create']
+);
 
-// Preview
-Route::get('/preview/{id}', [TitleController::class, 'preview']);
+Route::post(
+    '/store',
+    [TitleController::class, 'store']
+);
 
-// Auto-save
-Route::post('/autosave/{id}', [TitleController::class, 'autosave']);
 
-// Comments
-Route::post('/comment/{id}', [TitleController::class, 'addComment']);
+/*
+|--------------------------------------------------------------------------
+| Edit
+|--------------------------------------------------------------------------
+*/
 
-// Restore soft deleted title
-Route::get('/restore/{id}', [TitleController::class, 'restore']);
+Route::get(
+    '/edit/{id}',
+    [TitleController::class, 'editPage']
+);
 
-// Permanently delete
-Route::get('/force-delete/{id}', [TitleController::class, 'forceDelete']);
+
+/*
+|--------------------------------------------------------------------------
+| Update
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/update/{id}',
+    [TitleController::class, 'update']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Delete
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/delete/{id}',
+    [TitleController::class, 'destroy']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Bulk Delete
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/bulk-delete',
+    [TitleController::class, 'bulkDestroy']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Preview
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/preview/{id}',
+    [TitleController::class, 'preview']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Auto-save
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/autosave/{id}',
+    [TitleController::class, 'autosave']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Comments
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/comment/{id}',
+    [TitleController::class, 'addComment']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| ⭐ Favorite
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/favorite/{id}',
+    [TitleController::class, 'toggleFavorite']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| 📋 Duplicate
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/duplicate/{id}',
+    [TitleController::class, 'duplicate']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| 🔄 Quick Status
+|--------------------------------------------------------------------------
+*/
+
+Route::post(
+    '/status/{id}',
+    [TitleController::class, 'changeStatus']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| 📥 Export CSV
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/export-csv',
+    [TitleController::class, 'exportCsv']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Restore Soft Deleted Title
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/restore/{id}',
+    [TitleController::class, 'restore']
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Permanently Delete
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/force-delete/{id}',
+    [TitleController::class, 'forceDelete']
+);

@@ -7,6 +7,7 @@ use App\Models\TitleRevision;
 use App\Models\TitleComment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TitleController extends Controller
 {
@@ -30,9 +31,16 @@ class TitleController extends Controller
 
             $query->where(function ($q) use ($search) {
 
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-
+                $q->where(
+                    'title',
+                    'like',
+                    "%{$search}%"
+                )
+                    ->orWhere(
+                        'description',
+                        'like',
+                        "%{$search}%"
+                    );
             });
         }
 
@@ -43,35 +51,103 @@ class TitleController extends Controller
         */
 
         if ($status = $request->input('status')) {
-            $query->where('status', $status);
+
+            $query->where(
+                'status',
+                $status
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Favorite Filter
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $request->filled('favorite') &&
+            $request->favorite !== 'all'
+        ) {
+
+            $query->where(
+                'is_favorite',
+                $request->favorite === '1'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date From
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('date_from')) {
+
+            $query->whereDate(
+                'created_at',
+                '>=',
+                $request->date_from
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date To
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('date_to')) {
+
+            $query->whereDate(
+                'created_at',
+                '<=',
+                $request->date_to
+            );
         }
 
         /*
         |--------------------------------------------------------------------------
         | Sorting
         |--------------------------------------------------------------------------
+        |
+        | DEFAULT = ID ASC
+        |
+        | 1, 2, 3, 4, 5...
+        |
         */
 
-        $sort = $request->input('sort', 'id');
+        $sort = $request->input(
+            'sort',
+            'id'
+        );
 
-        $direction = $request->input('direction', 'asc');
+        $direction = $request->input(
+            'direction',
+            'asc'
+        );
 
         $allowedSorts = [
             'id',
             'title',
             'created_at',
-            'status'
+            'status',
+            'is_favorite',
         ];
 
-        if (in_array($sort, $allowedSorts)) {
+        if (!in_array($sort, $allowedSorts)) {
 
-            $query->orderBy(
-                $sort,
-                $direction === 'desc'
-                    ? 'desc'
-                    : 'asc'
-            );
+            $sort = 'id';
         }
+
+        if (!in_array($direction, ['asc', 'desc'])) {
+
+            $direction = 'asc';
+        }
+
+        $query->orderBy(
+            $sort,
+            $direction
+        );
 
         /*
         |--------------------------------------------------------------------------
@@ -80,12 +156,14 @@ class TitleController extends Controller
         */
 
         $titles = $query
-            ->paginate(10)
-            ->appends($request->query());
+            ->paginate(5)
+            ->appends(
+                $request->query()
+            );
 
         return view('app', [
             'page' => 'index',
-            'titles' => $titles
+            'titles' => $titles,
         ]);
     }
 
@@ -99,7 +177,7 @@ class TitleController extends Controller
     public function create()
     {
         return view('app', [
-            'page' => 'create'
+            'page' => 'create',
         ]);
     }
 
@@ -117,18 +195,23 @@ class TitleController extends Controller
             'title' => [
                 'required',
                 'string',
-                'max:255'
+                'max:255',
             ],
 
             'description' => [
                 'nullable',
-                'string'
+                'string',
             ],
 
             'status' => [
                 'nullable',
-                'in:draft,published,archived'
-            ]
+                'in:draft,published,archived',
+            ],
+
+            'is_favorite' => [
+                'nullable',
+                'boolean',
+            ],
 
         ]);
 
@@ -139,16 +222,30 @@ class TitleController extends Controller
         */
 
         $data['status'] =
-            $data['status'] ?? 'draft';
+            $data['status']
+            ?? 'draft';
 
         /*
         |--------------------------------------------------------------------------
-        | Generate Slug
+        | Favorite
+        |--------------------------------------------------------------------------
+        */
+
+        $data['is_favorite'] =
+            $request->boolean(
+                'is_favorite'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Slug
         |--------------------------------------------------------------------------
         */
 
         $data['slug'] =
-            Str::slug($data['title']);
+            Str::slug(
+                $data['title']
+            );
 
         /*
         |--------------------------------------------------------------------------
@@ -161,23 +258,23 @@ class TitleController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Create Initial Revision
+        | Initial Revision
         |--------------------------------------------------------------------------
         */
 
         TitleRevision::create([
 
             'title_id' =>
-                $title->id,
+            $title->id,
 
             'title' =>
-                $title->title,
+            $title->title,
 
             'description' =>
-                $title->description,
+            $title->description,
 
             'changed_by' =>
-                'system'
+            'system',
 
         ]);
 
@@ -200,12 +297,6 @@ class TitleController extends Controller
         $title =
             Title::findOrFail($id);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Revisions
-        |--------------------------------------------------------------------------
-        */
-
         $revisions =
             TitleRevision::where(
                 'title_id',
@@ -216,12 +307,6 @@ class TitleController extends Controller
                 'desc'
             )
             ->get();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Comments
-        |--------------------------------------------------------------------------
-        */
 
         $comments =
             TitleComment::where(
@@ -237,16 +322,16 @@ class TitleController extends Controller
         return view('app', [
 
             'page' =>
-                'edit',
+            'edit',
 
             'item' =>
-                $title,
+            $title,
 
             'revisions' =>
-                $revisions,
+            $revisions,
 
             'comments' =>
-                $comments
+            $comments,
 
         ]);
     }
@@ -266,71 +351,53 @@ class TitleController extends Controller
         $title =
             Title::findOrFail($id);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Validation
-        |--------------------------------------------------------------------------
-        */
-
         $data =
             $request->validate([
 
                 'title' => [
                     'required',
                     'string',
-                    'max:255'
+                    'max:255',
                 ],
 
                 'description' => [
                     'nullable',
-                    'string'
+                    'string',
                 ],
 
                 'status' => [
                     'nullable',
-                    'in:draft,published,archived'
-                ]
+                    'in:draft,published,archived',
+                ],
 
             ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Generate Slug
-        |--------------------------------------------------------------------------
-        */
 
         $data['slug'] =
             Str::slug(
                 $data['title']
             );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Update Title
-        |--------------------------------------------------------------------------
-        */
-
         $title->update($data);
 
         /*
         |--------------------------------------------------------------------------
-        | Create Revision
+        | Revision
         |--------------------------------------------------------------------------
         */
 
         TitleRevision::create([
 
             'title_id' =>
-                $title->id,
+            $title->id,
 
             'title' =>
-                $title->title,
+            $title->title,
 
             'description' =>
-                $title->description,
+            $title->description,
 
             'changed_by' =>
-                'system'
+            'system',
 
         ]);
 
@@ -350,8 +417,10 @@ class TitleController extends Controller
 
     public function destroy($id)
     {
-        Title::findOrFail($id)
-            ->delete();
+        $title =
+            Title::findOrFail($id);
+
+        $title->delete();
 
         return redirect('/')
             ->with(
@@ -375,12 +444,12 @@ class TitleController extends Controller
 
             'ids' => [
                 'required',
-                'array'
+                'array',
             ],
 
             'ids.*' => [
-                'exists:title,id'
-            ]
+                'exists:title,id',
+            ],
 
         ]);
 
@@ -411,10 +480,10 @@ class TitleController extends Controller
         return view('app', [
 
             'page' =>
-                'preview',
+            'preview',
 
             'item' =>
-                $title
+            $title,
 
         ]);
     }
@@ -424,14 +493,6 @@ class TitleController extends Controller
     |--------------------------------------------------------------------------
     | AUTOSAVE
     |--------------------------------------------------------------------------
-    |
-    | This is used by the Vue TinyMCE editor.
-    |
-    | Saves:
-    | - title
-    | - description
-    | - status
-    |
     */
 
     public function autosave(
@@ -442,36 +503,30 @@ class TitleController extends Controller
         $title =
             Title::findOrFail($id);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Validate Autosave Data
-        |--------------------------------------------------------------------------
-        */
-
         $data =
             $request->validate([
 
                 'title' => [
                     'required',
                     'string',
-                    'max:255'
+                    'max:255',
                 ],
 
                 'description' => [
                     'nullable',
-                    'string'
+                    'string',
                 ],
 
                 'status' => [
                     'nullable',
-                    'in:draft,published,archived'
-                ]
+                    'in:draft,published,archived',
+                ],
 
             ]);
 
         /*
         |--------------------------------------------------------------------------
-        | Update Slug If Title Changes
+        | Update Slug Only If Title Changed
         |--------------------------------------------------------------------------
         */
 
@@ -486,59 +541,53 @@ class TitleController extends Controller
                 );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Update Database
-        |--------------------------------------------------------------------------
-        */
-
         $title->update($data);
 
         /*
         |--------------------------------------------------------------------------
-        | Create Autosave Revision
+        | Revision
         |--------------------------------------------------------------------------
         */
 
         TitleRevision::create([
 
             'title_id' =>
-                $title->id,
+            $title->id,
 
             'title' =>
-                $title->title,
+            $title->title,
 
             'description' =>
-                $title->description,
+            $title->description,
 
             'changed_by' =>
-                'autosave'
+            'autosave',
 
         ]);
 
         return response()->json([
 
             'success' =>
-                true,
+            true,
 
             'message' =>
-                'Auto-saved successfully.',
+            'Auto-saved successfully.',
 
             'data' => [
 
                 'id' =>
-                    $title->id,
+                $title->id,
 
                 'title' =>
-                    $title->title,
+                $title->title,
 
                 'description' =>
-                    $title->description,
+                $title->description,
 
                 'status' =>
-                    $title->status
+                $title->status,
 
-            ]
+            ],
 
         ]);
     }
@@ -560,64 +609,46 @@ class TitleController extends Controller
             'body' => [
                 'required',
                 'string',
-                'max:1000'
+                'max:1000',
             ],
 
             'user_name' => [
                 'nullable',
                 'string',
-                'max:255'
-            ]
+                'max:255',
+            ],
 
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Check Title Exists
-        |--------------------------------------------------------------------------
-        */
-
         Title::findOrFail($id);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create Comment
-        |--------------------------------------------------------------------------
-        */
 
         $comment =
             TitleComment::create([
 
                 'title_id' =>
-                    $id,
+                $id,
 
                 'body' =>
-                    $request->body,
+                $request->body,
 
                 'user_name' =>
-                    $request->user_name
-                        ?? 'Anonymous'
+                $request->user_name
+                    ?? 'Anonymous',
 
             ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | JSON Response
-        |--------------------------------------------------------------------------
-        */
 
         if ($request->expectsJson()) {
 
             return response()->json([
 
                 'success' =>
-                    true,
+                true,
 
                 'message' =>
-                    'Comment added successfully!',
+                'Comment added successfully!',
 
                 'comment' =>
-                    $comment
+                $comment,
 
             ]);
         }
@@ -632,7 +663,340 @@ class TitleController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | RESTORE SOFT DELETED TITLE
+    | TOGGLE FAVORITE
+    |--------------------------------------------------------------------------
+    */
+
+    public function toggleFavorite($id)
+    {
+        $title =
+            Title::findOrFail($id);
+
+        $title->is_favorite =
+            !$title->is_favorite;
+
+        $title->save();
+
+        return response()->json([
+
+            'success' =>
+            true,
+
+            'is_favorite' =>
+            $title->is_favorite,
+
+            'message' =>
+            $title->is_favorite
+                ? 'Title added to favorites successfully!'
+                : 'Title removed from favorites successfully!',
+
+        ]);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DUPLICATE
+    |--------------------------------------------------------------------------
+    */
+
+    public function duplicate($id)
+    {
+        $title =
+            Title::findOrFail($id);
+
+        $newTitle =
+            $title->replicate();
+
+        $newTitle->title =
+            $title->title . ' - Copy';
+
+        $newTitle->slug =
+            Str::slug(
+                $newTitle->title
+            );
+
+        /*
+        |----------------------------------------------------------------------
+        | Duplicate starts as non-favorite and draft
+        |---------------------------------------------------------------------- 
+        */
+
+        $newTitle->is_favorite =
+            false;
+
+        $newTitle->status =
+            'draft';
+
+        $newTitle->save();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Revision
+        |--------------------------------------------------------------------------
+        */
+
+        TitleRevision::create([
+
+            'title_id' =>
+            $newTitle->id,
+
+            'title' =>
+            $newTitle->title,
+
+            'description' =>
+            $newTitle->description,
+
+            'changed_by' =>
+            'duplicate',
+
+        ]);
+
+        return redirect('/')
+            ->with(
+                'success',
+                'Title duplicated successfully!'
+            );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | QUICK STATUS UPDATE
+    |--------------------------------------------------------------------------
+    */
+
+    public function changeStatus(
+        Request $request,
+        $id
+    ) {
+
+        $request->validate([
+
+            'status' => [
+                'required',
+                'in:draft,published,archived',
+            ],
+
+        ]);
+
+        $title =
+            Title::findOrFail($id);
+
+        $title->status =
+            $request->status;
+
+        $title->save();
+
+        return response()->json([
+
+            'success' =>
+            true,
+
+            'status' =>
+            $title->status,
+
+            'message' =>
+            'Title status changed to ' .
+                ucfirst($title->status) .
+                ' successfully!',
+
+        ]);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | EXPORT CSV
+    |--------------------------------------------------------------------------
+    */
+
+    public function exportCsv(
+        Request $request
+    ): StreamedResponse {
+
+        $query =
+            Title::query();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Search
+        |--------------------------------------------------------------------------
+        */
+
+        if ($search = $request->input('search')) {
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'title',
+                    'like',
+                    "%{$search}%"
+                )
+                    ->orWhere(
+                        'description',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Status
+        |--------------------------------------------------------------------------
+        */
+
+        if ($status = $request->input('status')) {
+
+            $query->where(
+                'status',
+                $status
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Favorite
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $request->filled('favorite') &&
+            $request->favorite !== 'all'
+        ) {
+
+            $query->where(
+                'is_favorite',
+                $request->favorite === '1'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date From
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('date_from')) {
+
+            $query->whereDate(
+                'created_at',
+                '>=',
+                $request->date_from
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date To
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('date_to')) {
+
+            $query->whereDate(
+                'created_at',
+                '<=',
+                $request->date_to
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | CSV ID ASC
+        |--------------------------------------------------------------------------
+        */
+
+        $titles =
+            $query
+            ->orderBy(
+                'id',
+                'asc'
+            )
+            ->get();
+
+        $filename =
+            'titles-' .
+            now()->format(
+                'Y-m-d-H-i-s'
+            ) .
+            '.csv';
+
+        return response()->streamDownload(
+
+            function () use ($titles) {
+
+                $handle =
+                    fopen(
+                        'php://output',
+                        'w'
+                    );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Header
+                |--------------------------------------------------------------------------
+                */
+
+                fputcsv(
+                    $handle,
+                    [
+                        'ID',
+                        'Title',
+                        'Status',
+                        'Favorite',
+                        'Slug',
+                        'Created At',
+                    ]
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Rows
+                |--------------------------------------------------------------------------
+                */
+
+                foreach ($titles as $title) {
+
+                    fputcsv(
+                        $handle,
+                        [
+
+                            $title->id,
+
+                            $title->title,
+
+                            $title->status,
+
+                            $title->is_favorite
+                                ? 'Yes'
+                                : 'No',
+
+                            $title->slug,
+
+                            $title->created_at,
+
+                        ]
+                    );
+                }
+
+                fclose($handle);
+            },
+
+            $filename,
+
+            [
+                'Content-Type' =>
+                'text/csv',
+            ]
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RESTORE
     |--------------------------------------------------------------------------
     */
 
